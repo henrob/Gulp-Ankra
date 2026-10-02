@@ -1,0 +1,1124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Gulp</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{--bg:#fbfbf8;--out:#ebeae4;--ink:#1c1c1a;--mute:#8b8b84;--line:#e2e1da;--accent:#3b82f6;--danger:#ef4444}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font:500 15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-user-select:none;user-select:none;touch-action:none;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hud{position:fixed;pointer-events:none;font-variant-numeric:tabular-nums}
+#timer{top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);font-size:28px;font-weight:700;letter-spacing:.02em}
+#timer.low{color:var(--danger)}
+#board{top:max(14px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));min-width:150px;font-size:13px}
+#board div{display:flex;align-items:center;gap:8px;padding:2px 0}
+#board i{width:10px;height:10px;border-radius:50%;flex:none}
+#board b{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:92px}
+#board span{color:var(--mute)}
+#board .dead{opacity:.35}
+#board .me b{text-decoration:underline;text-underline-offset:3px}
+#specTag{top:max(18px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--mute)}
+#chips{bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:8px}
+.chip{padding:5px 12px;border-radius:99px;font-size:13px;font-weight:600;color:#fff}
+#toast{top:64px;left:50%;transform:translateX(-50%);font-size:15px;font-weight:600;opacity:0;transition:opacity .25s;white-space:nowrap}
+#toast.on{opacity:1}
+#count{inset:0;display:flex;align-items:center;justify-content:center;font-size:96px;font-weight:800;color:var(--ink);opacity:.85}
+#dash{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));width:76px;height:76px;border-radius:50%;
+  border:2px solid var(--ink);background:var(--bg);color:var(--ink);font:700 13px system-ui;display:none;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;touch-action:none}
+#dash small{font-weight:500;color:var(--mute);font-size:11px}
+#dash:active{background:var(--ink);color:var(--bg)}
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(251,251,248,.72);backdrop-filter:blur(3px)}
+.overlay.hide{display:none}
+.panel{width:min(380px,100%);background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:26px 24px;box-shadow:0 10px 40px rgba(0,0,0,.06);max-height:100%;overflow:auto}
+h1{font-size:40px;font-weight:800;letter-spacing:-.02em}
+h1 i{display:inline-block;width:.6em;height:.6em;border-radius:50%;background:var(--accent);margin-left:.15em}
+h2{font-size:24px;font-weight:800;margin-bottom:4px}
+.sub{color:var(--mute);margin-bottom:20px}
+label{display:block;font-size:12px;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 6px}
+input[type=text]{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink);user-select:text;-webkit-user-select:text}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;padding:10px 0;border:0;background:#fff;font:inherit;color:var(--mute);cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:#fff}
+.btn{display:block;width:100%;margin-top:12px;padding:13px;border-radius:12px;border:1.5px solid var(--ink);background:var(--ink);color:#fff;font:700 16px system-ui;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.help{margin-top:16px;font-size:12.5px;color:var(--mute);line-height:1.55}
+.help b{color:var(--ink)}
+table{width:100%;border-collapse:collapse;margin:14px 0 4px;font-size:14px;font-variant-numeric:tabular-nums}
+td,th{padding:7px 4px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+td:nth-child(n+3),th:nth-child(n+3){text-align:right}
+td i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px}
+tr.me td{font-weight:700}
+#bet{position:fixed;left:50%;bottom:max(10px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(500px,calc(100% - 20px));
+  background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.07);font-size:13px}
+#bet[hidden]{display:none}
+.betTop{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+#betCoins{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+#betCoins small{font-size:12px;font-weight:600;color:var(--mute);margin-left:4px}
+#betState{font-weight:600;color:var(--mute)}
+#betState.open{color:#16a34a}
+.stakes{display:flex;gap:6px;margin:8px 0}
+.stakes button{flex:1;padding:6px 0;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-weight:600;cursor:pointer}
+.stakes button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.picks{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.picks button{display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 2px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font:inherit;cursor:pointer;min-width:0}
+.picks button:disabled{opacity:.45;cursor:not-allowed}
+.picks b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.picks em{font-style:normal;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.picks small{font-size:11px;color:var(--mute);min-height:1.2em}
+#betMine{margin-top:6px;color:var(--mute);font-size:12px;min-height:1.2em}
+#rBets h3{font-size:15px;margin:18px 0 2px}
+td small{display:block;color:var(--mute);font-size:11px;font-weight:500}
+.row{display:flex;gap:8px;margin-top:12px}
+.row input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:.3em;text-align:center;font-weight:700}
+.row .btn{margin-top:0;width:auto;padding:11px 18px}
+.err{margin-top:10px;font-size:13px;color:var(--danger);min-height:1.2em}
+.code{font:800 44px ui-monospace,Consolas,monospace;letter-spacing:.2em;text-align:center;margin:6px 0 2px}
+.slot{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.slot i{width:12px;height:12px;border-radius:50%;flex:none}
+.slot b{flex:1;font-weight:600}
+.slot span{color:var(--mute);font-size:13px}
+.slot.bot b{color:var(--mute);font-weight:500}
+#lLink{font-size:12px;letter-spacing:0;text-transform:none;text-align:left;color:var(--mute)}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud" id="timer" hidden>3:00</div>
+<div class="hud" id="board" hidden></div>
+<div class="hud" id="specTag" hidden>SPECTATING</div>
+<div class="hud" id="chips"></div>
+<div class="hud" id="toast"></div>
+<div class="hud" id="count" hidden></div>
+<div id="bet" hidden>
+  <div class="betTop"><span id="betCoins">100<small>coins</small></span><span id="betState"></span></div>
+  <div class="stakes" id="stakes"><button data-s="10">10</button><button data-s="25">25</button><button data-s="50">50</button><button data-s="max">All in</button></div>
+  <div class="picks" id="picks"></div>
+  <div id="betMine"></div>
+</div>
+<button id="dash" hidden aria-label="Dash">DASH<small id="dashN">Space</small></button>
+
+<div class="overlay" id="menu">
+  <div class="panel">
+    <h1>Gulp<i></i></h1>
+    <p class="sub">Eat smaller. Dodge bigger. Three minutes.</p>
+    <label for="name">Name</label>
+    <input type="text" id="name" maxlength="12" placeholder="You" autocomplete="off">
+    <label>Bot difficulty</label>
+    <div class="seg" id="diff"><button data-d="easy">Easy</button><button data-d="normal">Normal</button><button data-d="hard">Hard</button></div>
+    <button class="btn" id="go">Practice vs 3 bots</button>
+    <label>Play online (up to 4 players)</label>
+    <button class="btn ghost" id="create" style="margin-top:0">Create room</button>
+    <div class="row"><input type="text" id="joinCode" maxlength="4" placeholder="CODE" autocomplete="off"><button class="btn ghost" id="join">Join</button><button class="btn ghost" id="watch">Watch</button></div>
+    <div class="err" id="netMsg"></div>
+    <p class="help"><b>Move</b> mouse / finger / WASD · <b>Dash</b> Space or button · <b>Pause</b> P<br>
+    Grab orbs: <b style="color:#7c5cff">Magnet</b> pulls food, <b style="color:#1d9bf0">Shield</b> blocks one bite, <b style="color:#ff9f1c">Dash</b> gives free bursts,
+    <b style="color:#6b7280">Ghost</b> hides you until you bite, <b style="color:#0ea5a4">Freeze</b> slows everyone near you.<br>
+    <b>Watch</b> joins a room as a spectator with the whole arena in view. Spectators get 100 coins to bet on the winner at the start and at the halfway mark.</p>
+  </div>
+</div>
+
+<div class="overlay hide" id="lobby">
+  <div class="panel">
+    <p class="sub" style="margin-bottom:0">Room code</p>
+    <div class="code" id="lCode">----</div>
+    <div class="row"><input type="text" id="lLink" readonly><button class="btn ghost" id="copy">Copy</button></div>
+    <div id="lSlots" style="margin-top:14px"></div>
+    <div id="lHost">
+      <label>Bot difficulty</label>
+      <div class="seg" id="ldiff"><button data-d="easy">Easy</button><button data-d="normal">Normal</button><button data-d="hard">Hard</button></div>
+      <button class="btn" id="start">Start match</button>
+    </div>
+    <p class="help" id="lSpec"></p>
+    <p class="help" id="lGuest" hidden>Waiting for the host to start. Empty slots are filled by bots.</p>
+    <button class="btn ghost" id="leave">Leave room</button>
+  </div>
+</div>
+
+<div class="overlay hide" id="pause">
+  <div class="panel"><h2>Paused</h2><p class="sub">Take a breath.</p>
+    <button class="btn" id="resume">Resume</button><button class="btn ghost" id="quit">Quit to menu</button></div>
+</div>
+
+<div class="overlay hide" id="results">
+  <div class="panel"><h2 id="rTitle"></h2><p class="sub" id="rSub"></p>
+    <table><thead><tr><th>#</th><th>Player</th><th>Mass</th><th>Kills</th></tr></thead><tbody id="rBody"></tbody></table>
+    <div id="rBets" hidden><h3>Spectator bets</h3><p class="sub" id="rBetTop" style="margin-bottom:0"></p>
+      <table><thead><tr><th>#</th><th>Spectator</th><th>Coins</th><th>Net</th></tr></thead><tbody id="rBetBody"></tbody></table></div>
+    <button class="btn" id="again">Play again</button><button class="btn ghost" id="toMenu">Menu</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   SIMULATION — no DOM in here. Deterministic given a seed + inputs, so a
+   host can run it and guests can render its snapshots (online layer next).
+   ===================================================================== */
+const TAU = Math.PI * 2;
+const CFG = {
+  ARENA_R: 1100, END_R: 380, MATCH: 180,
+  RING_START: 70, RING_END: 165,        // when the arena begins / stops closing in
+  RESPAWN_UNTIL: 120,                   // after this, death is final
+  START_MASS: 20, MIN_MASS: 15,
+  BET: { START: 100, W1_END: 20, W2_START: 90, W2_END: 110, MAX: 3, EDGE: .92 },   // spectator betting
+};
+// Two betting windows: the opening seconds, and the halfway mark.
+function betWindowAt(t) {
+  const B = CFG.BET;
+  if (t < B.W1_END) return { w: 1, left: B.W1_END - t };
+  if (t >= B.W2_START && t < B.W2_END) return { w: 2, left: B.W2_END - t };
+  return null;
+}
+const COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b'];
+const ORB_TYPES = ['magnet', 'shield', 'dash', 'ghost', 'freeze'];
+const BOT_NAMES = ['Ada', 'Bolt', 'Cog', 'Dot', 'Echo', 'Fizz', 'Gus', 'Hex', 'Ivy', 'Jinx'];
+const DIFF = {
+  easy:   { think: .36, vision: 320, agg: .55, flee: .7,  noise: .55, dash: 0,   speed: .92 },
+  normal: { think: .20, vision: 480, agg: 1.0, flee: 1.0, noise: .20, dash: .35, speed: 1.0 },
+  hard:   { think: .10, vision: 700, agg: 1.4, flee: 1.3, noise: .05, dash: .8,  speed: 1.04 },
+};
+const rad = m => Math.sqrt(m) * 4.2;
+const spd = m => Math.max(130, 310 * Math.pow(m / 20, -0.2));
+const lerp = (a, b, k) => a + (b - a) * k;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+class Sim {
+  constructor({ seed = 1, diff = 'normal', names = {}, humans = [0] } = {}) {
+    this.rng = mulberry32(seed);
+    this.diff = diff;
+    this.t = 0; this.over = false; this.events = [];
+    this.food = []; this.spikes = []; this.orbs = [];
+    this.nextOrb = 7;
+    const pool = BOT_NAMES.slice().sort(() => this.rng() - .5);   // same seed => same bot names on every client
+    this.players = [];
+    for (let i = 0; i < 4; i++) {
+      const a = i * TAU / 4 + this.rng() * .4, human = humans.includes(i);
+      this.players.push({
+        id: i, human, name: human ? (names[i] || 'You') : pool[i], color: COLORS[i],
+        x: Math.cos(a) * 620, y: Math.sin(a) * 620, vx: 0, vy: 0, fx: 1, fy: 0,
+        mass: CFG.START_MASS, peak: CFG.START_MASS, kills: 0,
+        alive: true, respawnAt: 0, deathT: null, invuln: 2,
+        shield: 0, magnet: 0, freeDash: 0, dashCd: 0, freeT: 0, spikeCd: 0, ghost: 0, freeze: 0, slow: 0,
+        input: { x: 0, y: 0, m: 0, dash: false },
+        thinkT: this.rng() * .2, wander: this.rng() * TAU,
+      });
+    }
+    for (let i = 0; i < 240; i++) this.addFood(...this.randPoint(.95), 1);
+  }
+
+  ringR() {
+    const { RING_START: a, RING_END: b, ARENA_R: R0, END_R: R1 } = CFG;
+    return this.t <= a ? R0 : this.t >= b ? R1 : lerp(R0, R1, (this.t - a) / (b - a));
+  }
+  randPoint(frac) {
+    const r = Math.sqrt(this.rng()) * this.ringR() * frac, a = this.rng() * TAU;
+    return [Math.cos(a) * r, Math.sin(a) * r];
+  }
+  addFood(x, y, m) { this.food.push({ x, y, m, c: (this.rng() * 5) | 0 }); }
+  leader() {
+    if (this.t < 20) return null;
+    let best = null;
+    for (const p of this.players) if (p.alive && (!best || p.mass > best.mass)) best = p;
+    return best;
+  }
+
+  step(dt) {
+    if (this.over) return;
+    const t = (this.t += dt), R = this.ringR();
+    for (const p of this.players) {
+      if (p.alive) this.stepPlayer(p, dt, R);
+      else if (t >= p.respawnAt) this.respawn(p);
+    }
+    this.collide(dt, R);
+    this.spawn(dt, R);
+    let alive = 0;
+    for (const p of this.players) if (p.alive) alive++;
+    if (t >= CFG.MATCH || (t >= CFG.RESPAWN_UNTIL && alive <= 1)) this.over = true;
+  }
+
+  stepPlayer(p, dt, R) {
+    const D = DIFF[this.diff], inp = p.input;
+    if (!p.human) {
+      p.thinkT -= dt;
+      if (p.thinkT <= 0) { p.thinkT = D.think; think(this, p); }
+    }
+    p.invuln = Math.max(0, p.invuln - dt); p.shield = Math.max(0, p.shield - dt);
+    p.magnet = Math.max(0, p.magnet - dt); p.dashCd -= dt; p.spikeCd -= dt;
+    p.ghost = Math.max(0, p.ghost - dt); p.freeze = Math.max(0, p.freeze - dt); p.slow = Math.max(0, p.slow - dt);
+    if (inp.dash) { inp.dash = false; this.tryDash(p); }
+    if (p.freeT > 0) p.freeT -= dt;
+    else {
+      const s = spd(p.mass) * inp.m * (p.human ? 1 : D.speed) * (p.slow > 0 ? .45 : 1), k = Math.min(1, dt * 7);
+      p.vx += (inp.x * s - p.vx) * k; p.vy += (inp.y * s - p.vy) * k;
+    }
+    if (inp.m > .05) { p.fx = inp.x; p.fy = inp.y; }
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    const dc = Math.hypot(p.x, p.y);
+    if (dc > R + 260) { p.x *= (R + 260) / dc; p.y *= (R + 260) / dc; }
+
+    if (dc > R) {                                        // outside the ring: dissolve
+      p.mass -= (p.mass * .08 + 1.5) * dt;
+      if (p.mass < 10) { this.kill(p, null); return; }
+    } else {                                             // slow decay, heavier late
+      const decay = .004 + .012 * Math.pow(this.t / CFG.MATCH, 2);
+      p.mass = Math.max(CFG.MIN_MASS, p.mass - p.mass * decay * dt);
+    }
+    if (p.mass > p.peak) p.peak = p.mass;
+  }
+
+  tryDash(p) {
+    if (p.dashCd > 0) return;
+    const inp = p.input, dx = inp.m > .05 ? inp.x : p.fx, dy = inp.m > .05 ? inp.y : p.fy;
+    if (p.freeDash > 0) p.freeDash--;
+    else if (p.mass > 18) {
+      const cost = p.mass * .05; p.mass -= cost;
+      this.addFood(p.x - dx * rad(p.mass) * 1.6, p.y - dy * rad(p.mass) * 1.6, cost);
+    } else return;
+    const s = Math.max(680, spd(p.mass) * 2.8);
+    p.vx = dx * s; p.vy = dy * s; p.freeT = .22; p.dashCd = 1.2;
+  }
+
+  collide(dt, R) {
+    const ps = this.players, t = this.t;
+    for (const p of ps) {                                               // freeze aura slows everyone nearby
+      if (!p.alive || p.freeze <= 0) continue;
+      for (const q of ps) if (q !== p && q.alive && Math.hypot(q.x - p.x, q.y - p.y) < 300 + rad(p.mass)) q.slow = Math.max(q.slow, .3);
+    }
+    for (const p of ps) {
+      if (!p.alive) continue;
+      const r = rad(p.mass);
+      for (let i = this.food.length - 1; i >= 0; i--) {                 // food (+ magnet pull)
+        const f = this.food[i];
+        let dx = p.x - f.x, dy = p.y - f.y, d = Math.hypot(dx, dy);
+        if (p.magnet > 0 && d < 260 && d > 1) {
+          const pull = (90 + 380 * (1 - d / 260)) * dt;
+          f.x += dx / d * pull; f.y += dy / d * pull; dx = p.x - f.x; dy = p.y - f.y; d = Math.hypot(dx, dy);
+        }
+        if (d < r) { p.mass += f.m; this.food[i] = this.food[this.food.length - 1]; this.food.pop(); }
+        else if (t > CFG.RING_START && Math.hypot(f.x, f.y) > R + 20) { this.food[i] = this.food[this.food.length - 1]; this.food.pop(); }
+      }
+      for (let i = this.orbs.length - 1; i >= 0; i--) {                 // power-up orbs
+        const o = this.orbs[i];
+        if (Math.hypot(p.x - o.x, p.y - o.y) < r + 16) {
+          if (o.type === 'magnet') p.magnet = 7;
+          else if (o.type === 'shield') p.shield = 10;
+          else if (o.type === 'dash') p.freeDash += 3;
+          else if (o.type === 'ghost') p.ghost = 6;
+          else p.freeze = 5;
+          this.events.push({ k: 'pick', p: p.id, type: o.type });
+          this.orbs.splice(i, 1);
+        }
+      }
+      if (p.spikeCd <= 0 && p.freeT <= 0) {                             // spikes
+        for (const s of this.spikes) {
+          const dx = p.x - s.x, dy = p.y - s.y, d = Math.hypot(dx, dy) || 1;
+          if (d < r + s.r * .8) {
+            const loss = Math.max(0, Math.min(p.mass * .22, p.mass - 12));
+            p.mass -= loss; p.spikeCd = 1;
+            for (let k = 0; k < 4; k++) {
+              const a = this.rng() * TAU;
+              this.addFood(p.x + Math.cos(a) * r * 1.4, p.y + Math.sin(a) * r * 1.4, loss / 4);
+            }
+            p.vx = dx / d * 520; p.vy = dy / d * 520; p.freeT = .25;
+            this.events.push({ k: 'spike', p: p.id });
+            break;
+          }
+        }
+      }
+    }
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {   // bites
+      let big = ps[i], small = ps[j];
+      if (!big.alive || !small.alive) continue;
+      if (small.mass > big.mass) { big = ps[j]; small = ps[i]; }
+      if (big.mass < small.mass * 1.18 || small.invuln > 0) continue;
+      const dx = big.x - small.x, dy = big.y - small.y, d = Math.hypot(dx, dy) || 1;
+      if (d >= rad(big.mass) - rad(small.mass) * .35) continue;
+      if (small.shield > 0) {                                           // shield pops, attacker is thrown back
+        small.shield = 0; small.invuln = 1.2;
+        big.vx = dx / d * 560; big.vy = dy / d * 560; big.freeT = .3;
+        this.events.push({ k: 'shield', p: small.id, by: big.id });
+      } else {
+        big.mass += small.mass * (t >= 150 ? 1.3 : .7); big.kills++; big.ghost = 0;   // a kill gives the ambusher away
+        this.kill(small, big);
+      }
+    }
+  }
+
+  kill(p, by) {
+    p.alive = false; p.deathT = this.t; p.vx = p.vy = 0;
+    p.respawnAt = this.t + 2.5 < CFG.RESPAWN_UNTIL ? this.t + 2.5 : Infinity;
+    this.events.push({ k: by ? 'eat' : 'dissolve', p: p.id, by: by ? by.id : null });
+  }
+
+  respawn(p) {
+    let best = null, bestD = -1;
+    for (let i = 0; i < 10; i++) {
+      const [x, y] = this.randPoint(.8);
+      let md = 1e9;
+      for (const q of this.players) if (q.alive) md = Math.min(md, Math.hypot(q.x - x, q.y - y) - rad(q.mass));
+      if (md > bestD) { bestD = md; best = [x, y]; }
+    }
+    Object.assign(p, { alive: true, x: best[0], y: best[1], vx: 0, vy: 0, mass: CFG.START_MASS,
+      invuln: 2, shield: 0, magnet: 0, freeDash: 0, freeT: 0, dashCd: 0, ghost: 0, freeze: 0, slow: 0 });
+  }
+
+  spawn(dt, R) {
+    const t = this.t, k = t / CFG.MATCH;
+    const foodTarget = lerp(260, 70, k);                                 // food thins out
+    for (let n = 0; n < 3 && this.food.length < foodTarget; n++) this.addFood(...this.randPoint(.95), 1);
+
+    const spikeTarget = t < 35 ? 0 : Math.min(9, 2 + Math.floor((t - 35) / 16));   // hazards arrive
+    for (let i = this.spikes.length - 1; i >= 0; i--)
+      if (Math.hypot(this.spikes[i].x, this.spikes[i].y) > R - 50) this.spikes.splice(i, 1);
+    if (this.spikes.length < spikeTarget) {
+      for (let tries = 0; tries < 8; tries++) {
+        const [x, y] = this.randPoint(.85);
+        if (this.players.some(q => q.alive && Math.hypot(q.x - x, q.y - y) < 220)) continue;
+        if (this.spikes.some(s => Math.hypot(s.x - x, s.y - y) < 160)) continue;
+        this.spikes.push({ x, y, r: 34, born: t }); break;
+      }
+    }
+
+    this.orbs = this.orbs.filter(o => t - o.born < 22 && Math.hypot(o.x, o.y) < R - 30);
+    if (t >= this.nextOrb && this.orbs.length < 3) {
+      const [x, y] = this.randPoint(.8);
+      this.orbs.push({ x, y, born: t, type: ORB_TYPES[(this.rng() * ORB_TYPES.length) | 0] });
+      this.nextOrb = t + lerp(9, 4, k);
+    }
+  }
+
+  betWindow() { return betWindowAt(this.t); }
+
+  // Decimal odds per player. Calibrated against ~100 simulated matches: standings at the halfway
+  // mark only weakly predict the winner (leader wins ~39%), so a soft exponent beats a sharp one.
+  odds() {
+    const k = .6, w = this.players.map(p => p.alive ? Math.pow(p.mass, k)
+      : (p.respawnAt < 1e9 ? .4 * Math.pow(CFG.START_MASS, k) : .001));
+    const sum = w.reduce((a, b) => a + b, 0);
+    return w.map(x => clamp(Math.round(CFG.BET.EDGE / (x / sum) * 10) / 10, 1.2, 30));
+  }
+
+  results() {
+    const rows = this.players.map(p => ({ id: p.id, name: p.name, color: p.color, human: p.human,
+      mass: p.alive ? p.mass : 0, peak: p.peak, kills: p.kills, alive: p.alive, deathT: p.deathT }));
+    rows.sort((a, b) => (b.mass - a.mass) || (b.kills - a.kills) || ((b.deathT || 0) - (a.deathT || 0)));
+    return rows;
+  }
+}
+
+/* ---------- Bot brain: one steering vector from weighted wants ---------- */
+function think(sim, p) {
+  const D = DIFF[sim.diff], t = sim.t, R = sim.ringR(), me = rad(p.mass);
+  const agg = D.agg * (1 + t / 150);                // bots get hungrier as the match goes on
+  let sx = 0, sy = 0, wantDash = false;
+  const add = (dx, dy, w) => { const d = Math.hypot(dx, dy) || 1; sx += dx / d * w; sy += dy / d * w; };
+
+  const dc = Math.hypot(p.x, p.y);                  // stay inside the ring
+  if (dc > R - 150) add(-p.x, -p.y, 3.5 * Math.min(2, (dc - (R - 150)) / 150 + .3));
+
+  for (const q of sim.players) {
+    if (q === p || !q.alive || q.ghost > 0) continue;   // bots can't see ghosts
+    const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy), rq = rad(q.mass);
+    if (q.mass > p.mass * 1.15) {                   // threat: run
+      const reach = D.vision * .75 + rq;
+      if (d < reach) {
+        add(-dx, -dy, (3 * (1 - d / reach) + .5) * D.flee);
+        if (d < rq + me + 90 && Math.random() < D.dash * .5) wantDash = true;
+      }
+    } else if (p.mass > q.mass * 1.2 && q.invuln <= 0) {   // prey: hunt, leading the target
+      const reach = D.vision * agg;
+      if (d < reach) {
+        const w = (1.6 * agg * (1 - d / reach) + .3) * (q.shield > 0 ? .3 : 1);
+        add(dx + q.vx * .3, dy + q.vy * .3, w);
+        if (d < me + rq + 150 && d > me && p.mass > q.mass * 1.3 && Math.random() < D.dash * .3) wantDash = 'chase';
+      }
+    } else if (d < me + rq + 50) add(-dx, -dy, .8);  // roughly equal: keep distance
+  }
+  for (const s of sim.spikes) {
+    const dx = s.x - p.x, dy = s.y - p.y, d = Math.hypot(dx, dy), reach = me + s.r + 90;
+    if (d < reach) add(-dx, -dy, (3 * (1 - d / reach) + .5) * D.flee);
+  }
+  let orb = null, od = D.vision * .9;
+  for (const o of sim.orbs) { const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < od) { od = d; orb = o; } }
+  if (orb) add(orb.x - p.x, orb.y - p.y, 1.3);
+
+  let fb = null, fs = 0;
+  for (const f of sim.food) {
+    const d = Math.hypot(f.x - p.x, f.y - p.y);
+    if (d > D.vision) continue;
+    const sc = f.m / (d + 30);
+    if (sc > fs) { fs = sc; fb = f; }
+  }
+  if (fb) add(fb.x - p.x, fb.y - p.y, 1);
+
+  p.wander += (Math.random() - .5) * .9;
+  add(Math.cos(p.wander), Math.sin(p.wander), .25);
+  sx += (Math.random() - .5) * D.noise * 2; sy += (Math.random() - .5) * D.noise * 2;
+
+  const n = Math.hypot(sx, sy) || 1;
+  p.input.x = sx / n; p.input.y = sy / n; p.input.m = 1;
+  if (wantDash) p.input.dash = true;
+}
+
+/* =====================================================================
+   APP — canvas rendering, HUD, input, screens
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+let W = 0, H = 0, dpr = 1;
+function resize() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = innerWidth; H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+}
+addEventListener('resize', resize); resize();
+
+const FOOD_COL = ['#f4b6b6', '#b6d3f4', '#b9e5c3', '#f4e0aa', '#d8c8ef'];
+const ORB = { magnet: { c: '#7c5cff', l: 'M' }, shield: { c: '#1d9bf0', l: 'S' }, dash: { c: '#ff9f1c', l: 'D' },
+  ghost: { c: '#6b7280', l: 'G' }, freeze: { c: '#0ea5a4', l: 'F' } };
+const store = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch (_) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} },
+};
+
+let sim = null, state = 'menu', diff = store.get('gulp.diff', 'normal'), countT = 0, acc = 0, last = 0;
+let demo = null, myId = 0, net = null;
+const cam = { x: 0, y: 0, z: .5 };
+const BET_PANEL_H = 175;
+
+/* ---- input ---- */
+const ptr = { x: 0, y: 0, active: false, id: null }, keys = new Set();
+let dashReq = false;
+addEventListener('pointerdown', e => { ptr.id = e.pointerId; ptr.x = e.clientX; ptr.y = e.clientY; ptr.active = true; });
+addEventListener('pointermove', e => {
+  if (e.pointerType === 'touch' && e.pointerId !== ptr.id) return;
+  ptr.x = e.clientX; ptr.y = e.clientY; if (e.pointerType !== 'touch') ptr.active = true;
+});
+addEventListener('pointerup', e => { if (e.pointerType === 'touch' && e.pointerId === ptr.id) ptr.active = false; });
+addEventListener('pointercancel', () => { ptr.active = false; });
+$('dash').addEventListener('pointerdown', e => { e.stopPropagation(); dashReq = true; });
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (k === ' ') { e.preventDefault(); dashReq = true; }
+  else if (k === 'p' || k === 'escape') togglePause();
+  else keys.add(k);
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => { keys.clear(); if (state === 'play') togglePause(true); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') togglePause(true); });
+addEventListener('beforeunload', () => { if (net && net.peer) net.peer.destroy(); });
+
+function readInput(p) {
+  let x = 0, y = 0, m = 0;
+  const kx = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
+  const ky = (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0);
+  if (kx || ky) { const n = Math.hypot(kx, ky); x = kx / n; y = ky / n; m = 1; }
+  else if (ptr.active) {
+    const dx = ptr.x - W / 2, dy = ptr.y - H / 2, d = Math.hypot(dx, dy), s = Math.min(W, H);
+    if (d > s * .04) { x = dx / d; y = dy / d; m = clamp((d - s * .04) / (s * .14), 0, 1); }
+  }
+  p.input.x = x; p.input.y = y; p.input.m = m;
+  if (dashReq) { p.input.dash = true; dashReq = false; }
+}
+
+/* ---- screens ---- */
+function show(id, on) { $(id).classList.toggle('hide', !on); }
+function setDiff(d) {
+  diff = d; store.set('gulp.diff', d);
+  document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('on', b.dataset.d === d));
+  if (net && net.role === 'host') broadcastLobby();
+}
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => setDiff(b.dataset.d));
+setDiff(diff);
+$('name').value = store.get('gulp.name', '');
+
+function startDemo() { demo = new Sim({ seed: (Math.random() * 1e9) | 0, diff: 'normal', humans: [] }); demo.t = 0; }
+function setHud(on) {
+  ['timer', 'board'].forEach(id => $(id).hidden = !on);
+  $('dash').style.display = on && myId >= 0 ? 'flex' : 'none';
+  $('specTag').hidden = !(on && myId < 0);
+  $('bet').hidden = !(on && myId < 0 && net);
+  const spec = on && myId < 0;                                    // spectator toasts sit above the betting panel
+  $('toast').style.top = spec ? 'auto' : ''; $('toast').style.bottom = spec ? (BET_PANEL_H + 4) + 'px' : '';
+  if (!on) { $('chips').innerHTML = ''; $('toast').classList.remove('on'); $('count').hidden = true; }
+}
+function startGame() {
+  const nm = $('name').value.trim().slice(0, 12); store.set('gulp.name', nm);
+  myId = 0;
+  beginMatch(new Sim({ seed: (Math.random() * 1e9) | 0, diff, names: { 0: nm || 'You' }, humans: [0] }));
+}
+function beginMatch(s) {                       // shared by practice, host and guest
+  sim = s;
+  const me = sim.players[myId] || { x: 0, y: 0 }; cam.x = me.x; cam.y = me.y; cam.z = .5;
+  show('menu', false); show('lobby', false); show('results', false); show('pause', false);
+  setHud(true); state = 'count'; countT = 3; acc = 0; buildBoard();
+}
+function toMenu() {
+  leaveNet();
+  state = 'menu'; sim = null; setHud(false);
+  show('results', false); show('pause', false); show('lobby', false); show('menu', true); startDemo();
+}
+function togglePause(force) {
+  if (net) return;                              // no pausing a shared match
+  if (state === 'play' && (force || force === undefined)) { state = 'paused'; show('pause', true); }
+  else if (state === 'paused' && !force) { state = 'play'; show('pause', false); acc = 0; }
+}
+$('go').onclick = startGame; $('toMenu').onclick = toMenu;
+$('again').onclick = () => net ? backToLobby() : startGame();
+$('resume').onclick = () => togglePause(false); $('quit').onclick = toMenu;
+
+function finish(rows, meId, bets) {
+  state = 'over'; setHud(false);
+  const me = rows.find(r => r.id === meId), rank = rows.indexOf(me) + 1;
+  if (me) {
+    const best = Math.max(+store.get('gulp.best', 0), Math.round(me.peak)); store.set('gulp.best', best);
+    $('rTitle').textContent = rank === 1 ? 'You won' : ['', '', '2nd place', '3rd place', 'Last place'][rank];
+    $('rSub').textContent = `Peak mass ${Math.round(me.peak)} · Personal best ${best}`;
+  } else {                                                    // spectator
+    $('rTitle').textContent = 'Match over'; $('rSub').textContent = `${rows[0].name} wins`;
+  }
+  $('rBody').innerHTML = rows.map((r, i) =>
+    `<tr class="${r.id === meId ? 'me' : ''}"><td>${i + 1}</td><td><i style="background:${r.color}"></i>${esc(r.name)}${r.alive ? '' : ' ✕'}</td><td>${Math.round(r.mass)}</td><td>${r.kills}</td></tr>`).join('');
+  const board = bets || [], myPeer = net && net.peer ? net.peer.id : null;
+  $('rBets').hidden = !board.length;
+  if (board.length) {
+    const top = board[0];
+    $('rBetTop').textContent = top.net > 0 ? `Top bettor: ${top.name} (+${top.net} coins)` : 'No spectator profited this round';
+    $('rBetBody').innerHTML = board.map((b, i) => {
+      const picks = b.bets.length ? b.bets.map(x => `${esc(rows.find(r => r.id === x.t).name)} ${x.s}${x.won ? ' ✓' : ' ✗'}`).join(' · ') : 'no bets';
+      return `<tr class="${b.id === myPeer ? 'me' : ''}"><td>${i + 1}</td><td>${esc(b.name)}<small>${picks}</small></td><td>${b.final}</td><td>${b.net > 0 ? '+' : ''}${b.net}</td></tr>`;
+    }).join('');
+    const mineRow = board.find(b => b.id === myPeer);
+    if (!me && mineRow) $('rSub').textContent = `${rows[0].name} wins · You ended with ${mineRow.final} coins (${mineRow.net > 0 ? '+' : ''}${mineRow.net})`;
+  }
+  $('again').textContent = net ? 'Back to lobby' : 'Play again';
+  show('results', true);
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ---- HUD ---- */
+let boardEls = [], boardT = 0, toastT = 0, lastTimer = '';
+function buildBoard() {
+  $('board').innerHTML = sim.players.map(() => '<div><i></i><b></b><span></span></div>').join('');
+  boardEls = [...$('board').children];
+}
+function updateHud(dt) {
+  const left = Math.max(0, CFG.MATCH - sim.t), txt = Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0');
+  if (txt !== lastTimer) { $('timer').textContent = txt; lastTimer = txt; }
+  $('timer').classList.toggle('low', left <= 10);
+  boardT -= dt;
+  if (boardT <= 0) {
+    boardT = .25;
+    const order = sim.players.slice().sort((a, b) => (b.alive ? b.mass : -1) - (a.alive ? a.mass : -1));
+    order.forEach((p, i) => {
+      const el = boardEls[i];
+      el.className = (p.human ? 'me ' : '') + (p.alive ? '' : 'dead');
+      el.children[0].style.background = p.color;
+      el.children[1].textContent = p.name;
+      el.children[2].textContent = p.alive ? Math.round(p.mass) : '—';
+    });
+    const me = sim.players[myId], chips = [];
+    if (me) {
+      for (const k of ['shield', 'magnet', 'ghost', 'freeze'])
+        if (me[k] > 0) chips.push(`<div class="chip" style="background:${ORB[k].c}">${k[0].toUpperCase() + k.slice(1)} ${Math.ceil(me[k])}s</div>`);
+      $('dashN').textContent = me.freeDash > 0 ? `${me.freeDash} free` : 'Space';
+    }
+    $('chips').innerHTML = chips.join('');
+    if (myId < 0 && net) updateBetUi();
+  }
+  toastT -= dt; if (toastT <= 0) $('toast').classList.remove('on');
+}
+/* ---- spectator betting panel ---- */
+let stakeChoice = '10';
+const fmtClock = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+function betStake() { const c = net.coins || 0; return Math.max(0, Math.min(c, stakeChoice === 'max' ? c : +stakeChoice)); }
+function updateBetUi() {
+  const win = betWindowAt(sim.t), B = CFG.BET, coins = net.coins ?? B.START, odds = net.odds || sim.players.map(() => 0);
+  $('betCoins').innerHTML = `${coins}<small>coins</small>`;
+  const st = $('betState');
+  st.className = win ? 'open' : '';
+  st.textContent = win ? `Bets open · ${Math.ceil(win.left)}s`
+    : sim.t < B.W2_START ? `Next bets at ${fmtClock(B.W2_START)}` : 'Betting closed';
+  document.querySelectorAll('#stakes button').forEach(b => b.classList.toggle('on', b.dataset.s === stakeChoice));
+  const mine = net.bets || [];
+  const html = sim.players.map((p, i) => {
+    const staked = mine.filter(b => b.target === i).reduce((a, b) => a + b.stake, 0);
+    return `<button data-i="${i}" ${win && coins > 0 ? '' : 'disabled'} style="border-color:${p.color}">
+      <b style="color:${p.color}">${esc(p.name)}</b><em>${odds[i] ? 'x' + odds[i].toFixed(1) : '–'}</em><small>${staked ? staked + ' staked' : (p.alive ? Math.round(p.mass) : 'out')}</small></button>`;
+  }).join('');
+  if (html !== net.picksHtml) { net.picksHtml = html; $('picks').innerHTML = html; }   // don't rebuild under a pending click
+  $('betMine').textContent = mine.length
+    ? 'Your bets: ' + mine.map(b => `${sim.players[b.target].name} ${b.stake} @${b.odds.toFixed(1)}x`).join(' · ')
+    : 'Odds shift with the standings. A bet locks in the odds you see when you place it.';
+}
+$('stakes').onclick = e => { const b = e.target.closest('button'); if (b) { stakeChoice = b.dataset.s; if (net && sim) updateBetUi(); } };
+$('picks').onclick = e => {
+  const b = e.target.closest('button'); if (!b || b.disabled || !net || net.role !== 'guest') return;
+  const stake = betStake(); if (stake < 1) return toast('No coins left to stake');
+  sendOn(net.ctrl, { t: 'bet', target: +b.dataset.i, stake });
+};
+function toast(msg) { $('toast').textContent = msg; $('toast').classList.add('on'); toastT = 2; }
+function handleEvents(list) {
+  const nm = id => sim.players[id].name;
+  for (const e of list) {
+    if (e.k === 'eat') {
+      if (myId < 0) toast(`${nm(e.by)} ate ${nm(e.p)}`);
+      else if (e.by === myId) toast(`You ate ${nm(e.p)}`); else if (e.p === myId) toast(`${nm(e.by)} ate you`);
+    }
+    else if (e.k === 'dissolve' && e.p === myId) toast('You left the arena');
+    else if (e.k === 'shield' && e.p === myId) toast('Shield blocked a bite');
+    else if (e.k === 'spike' && e.p === myId) toast('Spiked!');
+  }
+}
+
+/* ---- render ---- */
+function render(s, focus, dt) {                 // focus === null: spectator, frame the whole arena
+  const R = s.ringR(), viewer = focus ? focus.id : -1;
+  let fx = 0, fy = 0, viewHalf;
+  if (focus) { const f = focus.alive ? focus : (s.leader() || focus); fx = f.x; fy = f.y; viewHalf = 300 + rad(f.mass) * 7; }
+  else viewHalf = Math.max(R, 420) + 90;
+  const inset = focus ? 0 : BET_PANEL_H, cy = (H - inset) / 2;     // spectators keep the arena clear of the betting panel
+  const z = Math.min(W, H - inset) / (2 * viewHalf);
+  cam.x += (fx - cam.x) * Math.min(1, dt * 9); cam.y += (fy - cam.y) * Math.min(1, dt * 9);
+  cam.z += (z - cam.z) * Math.min(1, dt * 3);
+  const Z = cam.z, t = s.t;
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#ebeae4'; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(dpr * Z, 0, 0, dpr * Z, dpr * (W / 2 - cam.x * Z), dpr * (cy - cam.y * Z));
+  const x0 = cam.x - W / 2 / Z, x1 = cam.x + W / 2 / Z, y0 = cam.y - cy / Z, y1 = cam.y + (H - cy) / Z;
+
+  ctx.save();
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fillStyle = '#fbfbf8'; ctx.fill(); ctx.clip();
+  ctx.strokeStyle = '#eeede7'; ctx.lineWidth = 2 / Z; ctx.beginPath();
+  for (let x = Math.floor(x0 / 100) * 100; x <= x1; x += 100) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+  for (let y = Math.floor(y0 / 100) * 100; y <= y1; y += 100) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+  ctx.stroke(); ctx.restore();
+  const closing = t > CFG.RING_START;
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU);
+  ctx.strokeStyle = closing ? '#ef4444' : '#cfcec6'; ctx.lineWidth = (closing ? 6 : 4) / Z; ctx.stroke();
+
+  for (const fd of s.food) {                                           // food
+    if (fd.x < x0 || fd.x > x1 || fd.y < y0 || fd.y > y1) continue;
+    ctx.fillStyle = FOOD_COL[fd.c]; ctx.beginPath(); ctx.arc(fd.x, fd.y, 3.5 + Math.sqrt(fd.m) * 2.2, 0, TAU); ctx.fill();
+  }
+  for (const sp of s.spikes) {                                         // spikes
+    const k = Math.min(1, (t - sp.born) / 1), r = sp.r * k;
+    ctx.fillStyle = '#2b2b29'; ctx.beginPath();
+    for (let i = 0; i < 28; i++) { const a = i * TAU / 28, rr = i % 2 ? r * .72 : r; ctx.lineTo(sp.x + Math.cos(a) * rr, sp.y + Math.sin(a) * rr); }
+    ctx.fill();
+  }
+  for (const o of s.orbs) {                                            // power-up orbs
+    const d = ORB[o.type], pulse = 16 + Math.sin(t * 4 + o.x) * 2, fade = clamp((22 - (t - o.born)) / 3, 0, 1);
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = d.c; ctx.beginPath(); ctx.arc(o.x, o.y, pulse, 0, TAU); ctx.fill();
+    ctx.strokeStyle = d.c; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, pulse + 6, 0, TAU); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = '700 17px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.l, o.x, o.y + 1);
+    ctx.globalAlpha = 1;
+  }
+  const lead = s.leader();
+  for (const p of s.players.filter(q => q.alive).sort((a, b) => a.mass - b.mass)) {   // blobs
+    const r = rad(p.mass);
+    if (p.magnet > 0) {
+      ctx.strokeStyle = 'rgba(124,92,255,.35)'; ctx.setLineDash([10, 10]); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 260, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    }
+    if (p.freeze > 0) {                                                // freeze aura
+      ctx.fillStyle = 'rgba(14,165,164,.07)'; ctx.strokeStyle = 'rgba(14,165,164,.5)'; ctx.setLineDash([12, 10]); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 300 + r, 0, TAU); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+    }
+    const see = viewer === p.id || viewer < 0;                         // ghosts: faint to rivals, clearer to self/spectators
+    if (p.freeT > 0 && Math.hypot(p.vx, p.vy) > 400) {                 // dash trail
+      for (let i = 1; i <= 3; i++) {
+        ctx.globalAlpha = .18 / i; ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x - p.vx * .025 * i, p.y - p.vy * .025 * i, r, 0, TAU); ctx.fill();
+      }
+    }
+    ctx.globalAlpha = p.ghost > 0 ? (see ? .5 : .08) : (p.invuln > 0 && Math.floor(t * 8) % 2 ? .45 : 1);
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.fill();
+    if (p.slow > 0) { ctx.fillStyle = 'rgba(103,232,249,.45)'; ctx.fill(); }
+    ctx.lineWidth = 3; ctx.strokeStyle = p.human ? '#1c1c1a' : 'rgba(0,0,0,.16)'; ctx.stroke();
+    if (p.shield > 0) { ctx.strokeStyle = ORB.shield.c; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(p.x, p.y, r + 7, 0, TAU); ctx.stroke(); }
+    if (p.ghost <= 0 || see) {
+      ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.font = `700 ${Math.max(11, r * .5)}px system-ui`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.name, p.x, p.y + 1);
+    }
+    if (p === lead && (p.ghost <= 0 || see)) {                         // bounty crown on the leader
+      const cy = p.y - r - 16;
+      ctx.fillStyle = '#f5b301'; ctx.beginPath();
+      ctx.moveTo(p.x - 13, cy + 10); ctx.lineTo(p.x - 13, cy - 4); ctx.lineTo(p.x - 6, cy + 3); ctx.lineTo(p.x, cy - 7);
+      ctx.lineTo(p.x + 6, cy + 3); ctx.lineTo(p.x + 13, cy - 4); ctx.lineTo(p.x + 13, cy + 10); ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* =====================================================================
+   ONLINE — host-authoritative over PeerJS (WebRTC). The host runs the one
+   true Sim (bots included). Guests send only their steering input and
+   render snapshots. Two channels per guest:
+     ctrl (reliable)  — lobby, start/over, food list
+     fast (unordered) — inputs up, snapshots down; stale packets dropped by seq
+   ===================================================================== */
+const PEER_PREFIX = 'gulp-v1-', CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const SNAP_HZ = 20, INPUT_HZ = 30, INTERP_MS = 100;
+const MAX_SPECTATORS = 6;
+const r1 = v => Math.round(v * 10) / 10;
+const genCode = () => Array.from({ length: 4 }, () => CODE_CHARS[(Math.random() * CODE_CHARS.length) | 0]).join('');
+const myName = () => { const n = $('name').value.trim().slice(0, 12); store.set('gulp.name', n); return n || 'Player'; };
+const setNetMsg = m => { $('netMsg').textContent = m || ''; };
+const sendOn = (ch, m) => { try { if (ch && ch.open) ch.send(m); } catch (_) {} };
+
+function leaveNet() {
+  if (net && net.peer) { try { net.peer.destroy(); } catch (_) {} }
+  net = null; myId = 0;
+}
+function netFail(msg) { toMenu(); setNetMsg(msg); }
+function needPeer() {
+  if (typeof Peer === 'undefined') { setNetMsg('Online play is unavailable (could not load the network library).'); return false; }
+  return true;
+}
+const specCount = () => { let n = 0; for (const e of net.conns.values()) if (e.spec) n++; return n; };
+function lobbyView() {
+  return net.role === 'host'
+    ? { slots: net.slots.map(s => ({ k: s.k, name: s.name })), you: 0, diff, spec: specCount() }
+    : net.lobby;
+}
+function showLobby() {
+  state = 'lobby'; setHud(false);
+  show('menu', false); show('results', false); show('lobby', true);
+  renderLobby();
+}
+function renderLobby() {
+  const L = lobbyView(); if (!L) return;
+  $('lCode').textContent = net.code;
+  $('lLink').value = location.href.split('#')[0] + '#' + net.code;
+  $('lSlots').innerHTML = L.slots.map((s, i) =>
+    `<div class="slot ${s.k === 'bot' ? 'bot' : ''}"><i style="background:${COLORS[i]}"></i><b>${s.k === 'bot' ? 'Bot (open slot)' : esc(s.name)}</b><span>${s.k === 'host' ? 'Host' : ''}${i === L.you ? (s.k === 'host' ? ' · you' : 'you') : ''}</span></div>`).join('');
+  const host = net.role === 'host';
+  $('lSpec').textContent = L.spec ? `${L.spec} spectator${L.spec > 1 ? 's' : ''} watching` : '';
+  $('lGuest').textContent = L.you < 0 ? "You're spectating with 100 coins. Bets open when the match starts and again at the halfway mark." : 'Waiting for the host to start. Empty slots are filled by bots.';
+  $('lHost').hidden = !host; $('lGuest').hidden = host;
+  document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('on', b.dataset.d === L.diff));
+}
+$('copy').onclick = () => { const i = $('lLink'); i.select(); try { navigator.clipboard.writeText(i.value); } catch (_) { document.execCommand('copy'); } $('copy').textContent = 'Copied'; setTimeout(() => $('copy').textContent = 'Copy', 1200); };
+$('leave').onclick = toMenu;
+$('create').onclick = () => { if (needPeer()) hostCreate(); };
+const joinRoom = spec => { const c = $('joinCode').value.trim().toUpperCase(); if (c.length !== 4) return setNetMsg('Enter the 4-letter room code.'); if (needPeer()) guestJoin(c, spec); };
+$('join').onclick = () => joinRoom(false);
+$('watch').onclick = () => joinRoom(true);
+$('joinCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); });
+$('start').onclick = () => { if (net && net.role === 'host') hostStart(); };
+if (/^#[A-Za-z]{4}$/.test(location.hash)) $('joinCode').value = location.hash.slice(1).toUpperCase();
+
+/* ---- host ---- */
+function hostCreate(attempt = 0) {
+  setNetMsg('Creating room…');
+  const code = genCode(), peer = new Peer(PEER_PREFIX + code);
+  const timer = setTimeout(() => { peer.destroy(); netFail('Could not reach the matchmaking server.'); }, 10000);
+  peer.on('open', () => {
+    clearTimeout(timer); setNetMsg('');
+    net = { role: 'host', peer, code, conns: new Map(), pend: [], sendT: 0, foodT: 0, seq: 0, gid: 0, ledger: new Map(),
+      slots: [{ k: 'host', name: myName() }, { k: 'bot' }, { k: 'bot' }, { k: 'bot' }] };
+    myId = 0; showLobby();
+  });
+  peer.on('error', e => {
+    clearTimeout(timer);
+    if (e.type === 'unavailable-id' && attempt < 5) { peer.destroy(); hostCreate(attempt + 1); }
+    else if (!net) netFail('Could not create a room (' + e.type + ').');
+  });
+  peer.on('connection', conn => onGuestConn(conn));
+}
+function onGuestConn(conn) {
+  const kind = conn.metadata && conn.metadata.kind;
+  if (kind === 'fast') {
+    const e = net.conns.get(conn.peer);
+    if (!e) return conn.close();
+    e.fast = conn; conn.on('data', d => onHostData(e, d)); return;
+  }
+  conn.on('open', () => {
+    const reject = m => { sendOn(conn, { t: 'err', m }); setTimeout(() => conn.close(), 300); };
+    if (conn.metadata && conn.metadata.spec) {                // spectators take no slot and may join mid-match
+      if (specCount() >= MAX_SPECTATORS) return reject('Too many spectators.');
+      let name = String((conn.metadata && conn.metadata.name) || 'Viewer').slice(0, 12), n = 1;
+      const taken = nm => [...net.conns.values()].some(x => x.spec && x.name === nm) || [...net.ledger.values()].some(x => x.name === nm);
+      while (taken(name)) name = name.slice(0, 10) + '·' + (++n);
+      const e = { ctrl: conn, fast: null, slot: -1, spec: true, name, inp: { x: 0, y: 0, m: 0 }, d: 0, lastD: 0, at: 0 };
+      net.conns.set(conn.peer, e);
+      conn.on('data', d => onHostData(e, d));
+      conn.on('close', () => dropGuest(e)); conn.on('error', () => dropGuest(e));
+      broadcastLobby();
+      if (state === 'count' || state === 'play') {
+        ensureWallet(e);                                          // late viewers still get 100 coins (windows permitting)
+        sendOn(conn, { t: 'start', ...net.start, you: -1 });
+      }
+      return;
+    }
+    if (state !== 'lobby' && state !== 'over') return reject('That match has already started.');
+    const slot = net.slots.findIndex((s, i) => i > 0 && s.k === 'bot');
+    if (slot < 0) return reject('Room is full. Use Watch to spectate.');
+    let name = String((conn.metadata && conn.metadata.name) || 'Guest').slice(0, 12);
+    while (net.slots.some(s => s.k !== 'bot' && s.name === name)) name = name.slice(0, 10) + '·' + slot;
+    const e = { ctrl: conn, fast: null, slot, inp: { x: 0, y: 0, m: 0 }, d: 0, lastD: 0, at: 0 };
+    net.conns.set(conn.peer, e);
+    net.slots[slot] = { k: 'guest', name };
+    conn.on('data', d => onHostData(e, d));
+    conn.on('close', () => dropGuest(e)); conn.on('error', () => dropGuest(e));
+    broadcastLobby();
+  });
+}
+function dropGuest(e) {
+  if (!net || net.conns.get(e.ctrl.peer) !== e) return;
+  net.conns.delete(e.ctrl.peer);
+  if (e.spec) return broadcastLobby();
+  if (state === 'count' || state === 'play') {            // a bot takes over the blob
+    sim.players[e.slot].human = false; sim.players[e.slot].input.m = 0;
+  }
+  net.slots[e.slot] = { k: 'bot' };
+  if (state === 'lobby') renderLobby();
+  broadcastLobby();
+}
+function broadcastLobby() {
+  if (!net || net.role !== 'host') return;
+  const base = lobbyView();
+  for (const e of net.conns.values()) sendOn(e.ctrl, { t: 'lobby', slots: base.slots, you: e.slot, diff, code: net.code, spec: base.spec });
+  if (state === 'lobby') renderLobby();
+}
+/* ---- betting ledger (host is the bank) ---- */
+function ensureWallet(e) {
+  const id = e.ctrl.peer;
+  if (!net.ledger.has(id)) net.ledger.set(id, { name: e.name, coins: CFG.BET.START, bets: [] });
+  return net.ledger.get(id);
+}
+function placeBet(e, m) {
+  const w = net.ledger.get(e.ctrl.peer), win = (state === 'count' || state === 'play') ? sim.betWindow() : null;
+  const reply = (ok, msg) => sendOn(e.ctrl, { t: 'wallet', ok, msg, coins: w ? w.coins : 0, bets: w ? w.bets : [] });
+  if (!w || !win) return reply(false, 'Betting is closed.');
+  const stake = Math.floor(+m.stake), target = m.target | 0;
+  if (!(target >= 0 && target < 4)) return reply(false, 'Pick a player.');
+  if (!(stake >= 1) || stake > w.coins) return reply(false, 'Not enough coins.');
+  if (w.bets.filter(b => b.w === win.w).length >= CFG.BET.MAX) return reply(false, `Max ${CFG.BET.MAX} bets per window.`);
+  const odds = sim.odds()[target];                                // odds lock at the moment the host accepts the bet
+  w.coins -= stake; w.bets.push({ w: win.w, target, stake, odds });
+  reply(true, `${stake} on ${sim.players[target].name} at x${odds.toFixed(1)}`);
+}
+function settleBets(winnerId) {
+  const out = [];
+  for (const [id, w] of net.ledger) {
+    let pay = 0;
+    for (const b of w.bets) if (b.target === winnerId) pay += Math.round(b.stake * b.odds);
+    const final = w.coins + pay;
+    out.push({ id, name: w.name, final, net: final - CFG.BET.START,
+      bets: w.bets.map(b => ({ t: b.target, s: b.stake, o: b.odds, won: b.target === winnerId })) });
+  }
+  return out.sort((a, b) => b.final - a.final);
+}
+function onHostData(e, m) {
+  if (m.t === 'bet' && e.spec) return placeBet(e, m);
+  if (m.t === 'in') { e.inp.x = m.x; e.inp.y = m.y; e.inp.m = m.m; e.d = m.d; e.at = performance.now(); }
+}
+function hostStart() {
+  const humans = [], names = {};
+  net.slots.forEach((s, i) => { if (s.k !== 'bot') { humans.push(i); names[i] = s.name; } });
+  const seed = (Math.random() * 1e9) | 0;
+  net.gid = seed; net.seq = 0; net.pend.length = 0; net.sendT = 0; net.foodT = 0;
+  for (const e of net.conns.values()) { e.inp = { x: 0, y: 0, m: 0 }; e.d = e.lastD = 0; e.at = performance.now() + 3000; }
+  myId = 0; net.start = { seed, diff, names, humans };
+  net.ledger = new Map();                                         // fresh 100 coins for every spectator each match
+  for (const e of net.conns.values()) if (e.spec) ensureWallet(e);
+  for (const e of net.conns.values()) sendOn(e.ctrl, { t: 'start', ...net.start, you: e.slot });
+  beginMatch(new Sim({ seed, diff, names, humans }));
+}
+function applyRemoteInputs() {
+  const now = performance.now();
+  for (const e of net.conns.values()) {
+    if (e.spec) continue;
+    const p = sim.players[e.slot];
+    p.human = now - e.at < 4000;              // silent guest (closed tab, dead link): a bot drives until they return
+    if (!p.human) continue;
+    p.input.x = e.inp.x; p.input.y = e.inp.y; p.input.m = e.inp.m;
+    if (e.d !== e.lastD) { e.lastD = e.d; p.input.dash = true; }
+  }
+}
+function hostBroadcast(dt) {
+  net.sendT -= dt; net.foodT -= dt;
+  if (net.sendT > 0) return;
+  net.sendT = 1 / SNAP_HZ;
+  const snap = {
+    t: 's', g: net.gid, s: net.seq++, T: r1(sim.t),
+    p: sim.players.map(p => [r1(p.x), r1(p.y), r1(p.vx), r1(p.vy), r1(p.mass), p.alive ? 1 : 0, r1(p.shield), r1(p.magnet),
+      p.freeDash, r1(p.invuln), p.freeT > 0 ? 1 : 0, p.kills, r1(p.peak), r1(p.ghost), r1(p.freeze), p.slow > 0 ? 1 : 0]),
+    sp: sim.spikes.map(s => [r1(s.x), r1(s.y), r1(s.born)]),
+    o: sim.orbs.map(o => [r1(o.x), r1(o.y), ORB_TYPES.indexOf(o.type), r1(o.born)]),
+    e: net.pend.splice(0),
+  };
+  let food = null;
+  if (net.foodT <= 0) {
+    net.foodT = .25; food = { t: 'food', g: net.gid, a: [] };
+    for (const f of sim.food) food.a.push(Math.round(f.x), Math.round(f.y), f.m < 2 ? f.m : r1(f.m), f.c);
+  }
+  const odds = food ? sim.odds() : null;
+  for (const e of net.conns.values()) {
+    sendOn(e.fast && e.fast.open ? e.fast : e.ctrl, snap);
+    if (food) {
+      sendOn(e.ctrl, food);
+      if (e.spec) { const w = net.ledger.get(e.ctrl.peer); sendOn(e.ctrl, { t: 'odds', g: net.gid, odds, coins: w ? w.coins : CFG.BET.START, bets: w ? w.bets : [] }); }
+    }
+  }
+}
+function hostFinish() {
+  const rows = sim.results(), bets = settleBets(rows[0].id);
+  for (const e of net.conns.values()) sendOn(e.ctrl, { t: 'over', rows, bets });
+  finish(rows, 0, bets);
+}
+function backToLobby() {
+  if (net.role === 'host') { broadcastLobby(); }
+  showLobby();
+}
+
+/* ---- guest ---- */
+function guestJoin(code, spec = false) {
+  setNetMsg('Connecting…');
+  const peer = new Peer();
+  const fail = m => { try { peer.destroy(); } catch (_) {} if (!net) netFail(m); };
+  const timer = setTimeout(() => fail('Room not found, or the host is unreachable.'), 12000);
+  peer.on('error', e => { clearTimeout(timer); fail(e.type === 'peer-unavailable' ? `No room "${code}" — check the code.` : 'Connection error (' + e.type + ').'); });
+  peer.on('open', () => {
+    const ctrl = peer.connect(PEER_PREFIX + code, { reliable: true, metadata: { kind: 'ctrl', name: myName(), spec } });
+    ctrl.on('open', () => {
+      clearTimeout(timer); setNetMsg('');
+      net = { role: 'guest', peer, code, ctrl, fast: null, lobby: null, snaps: [], events: [], gid: -1, lastSeq: -1, dCount: 0, inT: 0 };
+    });
+    ctrl.on('data', onGuestData);
+    ctrl.on('close', () => { if (net && net.ctrl === ctrl) netFail('The host left the room.'); });
+  });
+}
+function onGuestData(m) {
+  if (!net || net.role !== 'guest') return;
+  switch (m.t) {
+    case 'err': netFail(m.m); break;
+    case 'lobby':
+      net.lobby = m; myId = m.you;
+      if (!net.fast) {
+        net.fast = net.peer.connect(PEER_PREFIX + net.code, { reliable: false, metadata: { kind: 'fast' } });
+        net.fast.on('data', onGuestData);
+      }
+      if (state === 'menu') showLobby(); else if (state === 'lobby') renderLobby();
+      break;
+    case 'start':
+      myId = m.you; net.gid = m.seed; net.lastSeq = -1; net.snaps = []; net.events = [];
+      net.coins = CFG.BET.START; net.bets = []; net.odds = null; net.picksHtml = '';
+      beginMatch(new Sim({ seed: m.seed, diff: m.diff, names: m.names, humans: m.humans }));
+      break;
+    case 'food':
+      if (sim && m.g === net.gid && state !== 'over') {
+        const a = m.a, out = [];
+        for (let i = 0; i < a.length; i += 4) out.push({ x: a[i], y: a[i + 1], m: a[i + 2], c: a[i + 3] });
+        sim.food = out;
+      }
+      break;
+    case 's':
+      if (!sim || m.g !== net.gid || m.s <= net.lastSeq || (state !== 'count' && state !== 'play')) break;
+      net.lastSeq = m.s; net.snaps.push({ rt: performance.now(), m }); if (net.snaps.length > 30) net.snaps.shift();
+      for (const e of m.e) net.events.push(e);
+      sim.spikes = m.sp.map(s => ({ x: s[0], y: s[1], r: 34, born: s[2] }));
+      sim.orbs = m.o.map(o => ({ x: o[0], y: o[1], type: ORB_TYPES[o[2]], born: o[3] }));
+      break;
+    case 'odds': if (m.g === net.gid) { net.odds = m.odds; net.coins = m.coins; net.bets = m.bets; } break;
+    case 'wallet':
+      net.coins = m.coins; net.bets = m.bets; toast(m.ok ? 'Bet placed: ' + m.msg : m.msg);
+      if (sim && myId < 0 && (state === 'play' || state === 'count')) updateBetUi();
+      break;
+    case 'over': if (sim && state !== 'over') finish(m.rows, myId, m.bets); break;
+  }
+}
+function guestSendInput(now) {
+  if (now - net.inT < 1000 / INPUT_HZ) return;
+  net.inT = now;
+  const i = sim.players[myId].input;
+  sendOn(net.fast && net.fast.open ? net.fast : net.ctrl, { t: 'in', x: Math.round(i.x * 100) / 100, y: Math.round(i.y * 100) / 100, m: Math.round(i.m * 100) / 100, d: net.dCount });
+}
+// Write the newest snapshots into the local ghost Sim: others are interpolated ~100 ms
+// behind, our own blob is extrapolated from the latest snapshot so steering feels immediate.
+function syncGhost() {
+  const S = net.snaps; if (!S.length) return;
+  const now = performance.now(), rt = now - INTERP_MS, newest = S[S.length - 1];
+  let a = S[0], b = S[0];
+  for (let i = 0; i < S.length; i++) if (S[i].rt <= rt) { a = S[i]; b = S[Math.min(i + 1, S.length - 1)]; }
+  const k = b.rt > a.rt ? clamp((rt - a.rt) / (b.rt - a.rt), 0, 1) : 1;
+  sim.t = newest.m.T;
+  newest.m.p.forEach((n, i) => {
+    const p = sim.players[i], pa = a.m.p[i], pb = b.m.p[i];
+    p.vx = n[2]; p.vy = n[3]; p.alive = !!n[5]; p.shield = n[6]; p.magnet = n[7]; p.freeDash = n[8];
+    p.invuln = n[9]; p.freeT = n[10] ? .1 : 0; p.kills = n[11]; p.peak = n[12];
+    p.ghost = n[13]; p.freeze = n[14]; p.slow = n[15] ? .3 : 0;
+    if (i === myId) {
+      const age = Math.min(.12, (now - newest.rt) / 1000);
+      p.x = n[0] + n[2] * age; p.y = n[1] + n[3] * age; p.mass = n[4];
+    } else if (pa[5] && pb[5]) {
+      p.x = lerp(pa[0], pb[0], k); p.y = lerp(pa[1], pb[1], k); p.mass = lerp(pa[4], pb[4], k);
+    } else { p.x = n[0]; p.y = n[1]; p.mass = n[4]; }
+  });
+}
+
+/* ---- main loop ---- */
+const STEP = 1 / 60;
+function frame(ts) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(.1, (ts - last) / 1000 || 0); last = ts;
+  if (state === 'menu' || state === 'lobby') {
+    if (!demo || demo.over) startDemo();
+    acc += dt; while (acc >= STEP) { demo.step(STEP); acc -= STEP; }
+    render(demo, demo.leader() || demo.players[0], dt);
+    return;
+  }
+  const host = net && net.role === 'host', guest = net && net.role === 'guest';
+  if (state === 'count') {
+    countT -= dt; $('count').hidden = false; $('count').textContent = Math.max(1, Math.ceil(countT));
+    if (countT <= 0) { state = 'play'; $('count').hidden = true; acc = 0; }
+  } else if (state === 'play') {
+    const me = myId >= 0 ? sim.players[myId] : null;          // null = spectator
+    if (me) readInput(me);
+    if (guest) {
+      if (me) {
+        if (me.input.dash) { net.dCount++; me.input.dash = false; }
+        guestSendInput(ts);
+      }
+      handleEvents(net.events.splice(0));
+    } else {
+      if (host) applyRemoteInputs();
+      acc += dt;
+      while (acc >= STEP && !sim.over) { sim.step(STEP); acc -= STEP; }
+      const ev = sim.events.splice(0);
+      if (host) net.pend.push(...ev);
+      handleEvents(ev);
+      if (host && sim.over) hostFinish();
+      else if (!net && (sim.over || (!me.alive && me.respawnAt === Infinity && sim.t - me.deathT > 1.5))) finish(sim.results(), 0);
+    }
+  }
+  if (guest && (state === 'count' || state === 'play')) syncGhost();
+  if (host && (state === 'count' || state === 'play')) hostBroadcast(dt);
+  if (sim) { render(sim, myId >= 0 ? sim.players[myId] : null, dt); if (state === 'play' || state === 'count') updateHud(dt); }
+}
+startDemo(); requestAnimationFrame(frame);
+window.__gulp = { Sim, CFG, get sim() { return sim; }, get state() { return state; }, get net() { return net; } };
+</script>
+</body>
+</html>
